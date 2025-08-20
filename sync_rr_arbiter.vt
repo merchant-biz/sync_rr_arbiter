@@ -1,0 +1,105 @@
+////////////////////////////////////////////////////////////////////////////////
+// Synchronous round-robin arbiter for 'n' requesters, 
+// output one-hot grant, and with fair arbitration
+//
+// @version 0.1.0
+//
+// @author Jordan Downie <jpjdownie.biz@gmail.com>
+// @section LICENSE
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER ``AS IS'' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN
+// NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENT IAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+////////////////////////////////////////////////////////////////////////////////
+timescale 1 ns / 1 ps
+module arbiter_vlg_tst();
+// constants             
+localparam requesters = 5;
+localparam CLOCK_CYCLES = 50000; // number of full clock cycles to run
+time clk_period = 20; // 20 ns period = 50 MHz  
+
+// test vector input registers
+reg clk = 0;
+reg [requesters-1:0] req = 0;
+reg rst = 1;
+// wires                                               
+wire [requesters-1:0] gnt;
+
+reg run_clk = 1'b1;
+
+// assign statements (if any)                          
+arbiter i1 (
+// port map - connection between master ports and signals/registers   
+	.clk(clk),
+	.gnt(gnt),
+	.req(req),
+	.rst(rst)
+);
+
+initial begin
+    #(clk_period);
+    rst = 0;                           
+    $display("Running testbench");                       
+end                                                    
+
+// Free-running clock, 20 ns period, gated by run_clk
+always begin
+    #(clk_period/2);
+    if (run_clk)
+        clk = ~clk;
+end
+
+// Stimulus for din: start after 30 ns, then every 20 ns assign a random value
+initial begin
+	#(20);
+	req = 5'b11111;
+	#(40);
+	req = 5'b11110;
+	#(40);
+	req = 5'b11100;
+	#(40);
+	req = 5'b11000;
+	#(40);
+	req = 5'b10000;
+	#(40);
+	req = 5'b00000;
+	#(40);
+	
+	#(20);
+	req = 5'b11111;
+	#(20);
+	req = 5'b11110;
+	#(20);
+	req = 5'b11100;
+	#(20);
+	req = 5'b11000;
+	#(20);
+	req = 5'b10000;
+	#(20);
+	req = 5'b00000;
+	
+	#(1000);
+	forever begin
+		#(20);
+		req = $random % requesters - 1;
+	end
+end
+
+// Count posedges; when we hit CLOCK_CYCLES, stop the clock (and finish)
+integer cycle_count = 0;
+always @(posedge clk) begin
+    cycle_count = cycle_count + 1;
+    if (cycle_count == CLOCK_CYCLES) begin
+        run_clk <= 1'b0;  // stop toggling in the clock generator
+        //$finish; // end sim
+    end
+end                                
+endmodule
+
