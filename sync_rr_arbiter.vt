@@ -56,7 +56,6 @@ always begin
         clk = ~clk;
 end
 
-// Stimulus for din: start after 30 ns, then every 20 ns assign a random value
 initial begin
 	#(20);
 	req = 5'b11111;
